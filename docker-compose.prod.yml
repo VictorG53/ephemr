@@ -21,7 +21,7 @@ services:
     image: WEBAPP_IMAGE
     container_name: ephemr-webapp
     ports:
-      - "80:80"
+      - "8001:80"
     depends_on:
       - websocket
     environment:
