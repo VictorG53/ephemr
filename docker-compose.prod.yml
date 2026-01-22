@@ -24,8 +24,6 @@ services:
       - "8001:80"
     depends_on:
       - websocket
-    environment:
-      - VITE_WS_URL=wss://DOMAIN_NAME/chat/
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]

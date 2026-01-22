@@ -49,6 +49,8 @@ jobs:
           tags: |
             ${{ steps.lowercase.outputs.webapp_image }}:latest
             ${{ steps.lowercase.outputs.webapp_image }}:${{ github.sha }}
+          build-args: |
+            VITE_WS_URL=wss://${{ secrets.DOMAIN_NAME }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -75,18 +77,15 @@ jobs:
       - name: Prepare docker-compose file
         env:
           GITHUB_ACTOR: ${{ github.actor }}
-          DOMAIN_NAME: ${{ secrets.DOMAIN_NAME }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           GITHUB_ACTOR_LOWER=$(echo "$GITHUB_ACTOR" | tr '[:upper:]' '[:lower:]')
           WEBAPP_IMAGE="ghcr.io/$GITHUB_ACTOR_LOWER/ephemr/webapp:latest"
           WEBSOCKET_IMAGE="ghcr.io/$GITHUB_ACTOR_LOWER/ephemr/websocket:latest"
 
-          # Créer une copie du fichier avec les variables remplacées
+          # Créer une copie du fichier avec les images
           cp docker-compose.prod.yml docker-compose.yml
           sed -i "s|WEBAPP_IMAGE|$WEBAPP_IMAGE|g" docker-compose.yml
           sed -i "s|WEBSOCKET_IMAGE|$WEBSOCKET_IMAGE|g" docker-compose.yml
-          sed -i "s|DOMAIN_NAME|$DOMAIN_NAME|g" docker-compose.yml
 
       - name: Deploy to production
         env:
