@@ -1,0 +1,167 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Convert to lowercase
+        id: lowercase
+        run: |
+          REPO_OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          REPO_NAME=$(echo "${{ github.event.repository.name }}" | tr '[:upper:]' '[:lower:]')
+          echo "repo_owner=${REPO_OWNER}" >> $GITHUB_OUTPUT
+          echo "repo_name=${REPO_NAME}" >> $GITHUB_OUTPUT
+          echo "webapp_image=ghcr.io/${REPO_OWNER}/${REPO_NAME}/webapp" >> $GITHUB_OUTPUT
+          echo "websocket_image=ghcr.io/${REPO_OWNER}/${REPO_NAME}/websocket" >> $GITHUB_OUTPUT
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push webapp image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./webapp
+          dockerfile: ./webapp/Dockerfile
+          push: true
+          tags: |
+            ${{ steps.lowercase.outputs.webapp_image }}:latest
+            ${{ steps.lowercase.outputs.webapp_image }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push websocket image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./websocket
+          dockerfile: ./websocket/Dockerfile
+          push: true
+          tags: |
+            ${{ steps.lowercase.outputs.websocket_image }}:latest
+            ${{ steps.lowercase.outputs.websocket_image }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Add SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to production
+        env:
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          DOMAIN_NAME: ${{ secrets.DOMAIN_NAME }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_ACTOR: ${{ github.actor }}
+        run: |
+          ssh -i ~/.ssh/deploy_key $SSH_USER@$SSH_HOST << EOF
+          set -e
+
+          # Variables
+          APP_DIR="/home/$SSH_USER/ephemr"
+          REGISTRY="ghcr.io"
+          GITHUB_ACTOR_LOWER=$(echo "${GITHUB_ACTOR}" | tr '[:upper:]' '[:lower:]')
+          REPO="${GITHUB_ACTOR_LOWER}/ephemr"
+          WEBAPP_IMAGE="$REGISTRY/$REPO/webapp:latest"
+          WEBSOCKET_IMAGE="$REGISTRY/$REPO/websocket:latest"
+          DOMAIN_NAME="${DOMAIN_NAME}"
+
+          # Créer le répertoire de l'app s'il n'existe pas
+          mkdir -p $APP_DIR
+          cd $APP_DIR
+
+          # Se connecter à ghcr.io
+          echo "$GITHUB_TOKEN" | docker login $REGISTRY -u "$GITHUB_ACTOR" --password-stdin
+
+          # Télécharger les nouvelles images
+          docker pull $WEBAPP_IMAGE
+          docker pull $WEBSOCKET_IMAGE
+
+          # Créer le docker-compose.yml pour la production
+          cat > docker-compose.yml << 'DOCKER_COMPOSE'
+          version: '3.8'
+
+          services:
+            websocket:
+              image: WEBSOCKET_IMAGE_PLACEHOLDER
+              container_name: ephemr-websocket
+              ports:
+                - "8080:8080"
+              environment:
+                - NODE_ENV=production
+                - PORT=8080
+              restart: unless-stopped
+              healthcheck:
+                test: ["CMD", "ps", "aux"]
+                interval: 30s
+                timeout: 10s
+                retries: 3
+                start_period: 10s
+
+            webapp:
+              image: WEBAPP_IMAGE_PLACEHOLDER
+              container_name: ephemr-webapp
+              ports:
+                - "80:80"
+              depends_on:
+                - websocket
+              environment:
+                - VITE_WS_URL=VITE_WS_URL_PLACEHOLDER
+              restart: unless-stopped
+              healthcheck:
+                test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
+                interval: 30s
+                timeout: 10s
+                retries: 3
+                start_period: 10s
+          DOCKER_COMPOSE
+
+          # Remplacer les placeholders par les vraies valeurs
+          sed -i "s|WEBAPP_IMAGE_PLACEHOLDER|$WEBAPP_IMAGE|g" docker-compose.yml
+          sed -i "s|WEBSOCKET_IMAGE_PLACEHOLDER|$WEBSOCKET_IMAGE|g" docker-compose.yml
+          sed -i "s|VITE_WS_URL_PLACEHOLDER|wss://$DOMAIN_NAME/chat/|g" docker-compose.yml
+
+          # Relancer les containers
+          docker compose down || true
+          docker compose up -d
+
+          # Vérifier que les services sont up
+          docker compose ps
+
+          # Logout de ghcr.io pour des raisons de sécurité
+          docker logout $REGISTRY
+
+          echo "Deployment successful!"
+          EOF
