@@ -8,8 +8,6 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  WEBAPP_IMAGE: ghcr.io/${{ github.repository }}/webapp
-  WEBSOCKET_IMAGE: ghcr.io/${{ github.repository }}/websocket
 
 jobs:
   build-and-push:
@@ -21,6 +19,16 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Convert to lowercase
+        id: lowercase
+        run: |
+          REPO_OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          REPO_NAME=$(echo "${{ github.event.repository.name }}" | tr '[:upper:]' '[:lower:]')
+          echo "repo_owner=${REPO_OWNER}" >> $GITHUB_OUTPUT
+          echo "repo_name=${REPO_NAME}" >> $GITHUB_OUTPUT
+          echo "webapp_image=ghcr.io/${REPO_OWNER}/${REPO_NAME}/webapp" >> $GITHUB_OUTPUT
+          echo "websocket_image=ghcr.io/${REPO_OWNER}/${REPO_NAME}/websocket" >> $GITHUB_OUTPUT
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -39,8 +47,8 @@ jobs:
           dockerfile: ./webapp/Dockerfile
           push: true
           tags: |
-            ${{ env.WEBAPP_IMAGE }}:latest
-            ${{ env.WEBAPP_IMAGE }}:${{ github.sha }}
+            ${{ steps.lowercase.outputs.webapp_image }}:latest
+            ${{ steps.lowercase.outputs.webapp_image }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -51,8 +59,8 @@ jobs:
           dockerfile: ./websocket/Dockerfile
           push: true
           tags: |
-            ${{ env.WEBSOCKET_IMAGE }}:latest
-            ${{ env.WEBSOCKET_IMAGE }}:${{ github.sha }}
+            ${{ steps.lowercase.outputs.websocket_image }}:latest
+            ${{ steps.lowercase.outputs.websocket_image }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -84,7 +92,8 @@ jobs:
           # Variables
           APP_DIR="/home/$SSH_USER/ephemr"
           REGISTRY="ghcr.io"
-          REPO="${GITHUB_ACTOR}/ephemr"
+          GITHUB_ACTOR_LOWER=$(echo "${GITHUB_ACTOR}" | tr '[:upper:]' '[:lower:]')
+          REPO="${GITHUB_ACTOR_LOWER}/ephemr"
           WEBAPP_IMAGE="$REGISTRY/$REPO/webapp:latest"
           WEBSOCKET_IMAGE="$REGISTRY/$REPO/websocket:latest"
           DOMAIN_NAME="${DOMAIN_NAME}"
