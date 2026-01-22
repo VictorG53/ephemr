@@ -1,0 +1,18 @@
+FROM node:24-alpine
+
+WORKDIR /app
+
+# Copier les fichiers de package
+COPY package*.json ./
+
+# Installer les dépendances
+RUN npm ci
+
+# Copier le code source
+COPY . .
+
+# Expose le port
+EXPOSE 5173
+
+# Builder la webapp
+RUN npm run build
