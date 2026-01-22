@@ -44,7 +44,7 @@ export default function Chat() {
         setEncryptionKey(key)
 
         // Connexion WebSocket
-        const wsUrl = `${import.meta.env.VITE_WS_URL}/chat/${channelId}`
+        const wsUrl = `${import.meta.env.VITE_WS_URL}${channelId}`
         const ws = new WebSocket(wsUrl)
 
         ws.onopen = () => {

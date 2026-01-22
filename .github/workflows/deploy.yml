@@ -51,7 +51,7 @@ jobs:
             ${{ steps.lowercase.outputs.webapp_image }}:latest
             ${{ steps.lowercase.outputs.webapp_image }}:${{ github.sha }}
           build-args: |
-            VITE_WS_URL=wss://${{ secrets.DOMAIN_NAME }}
+            VITE_WS_URL=wss://${{ secrets.DOMAIN_NAME }}/ws/
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
