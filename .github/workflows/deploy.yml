@@ -104,13 +104,16 @@ jobs:
           scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null docker-compose.yml $SSH_USER@$SSH_HOST:~/ephemr/
 
           # Se connecter et déployer
-          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $SSH_USER@$SSH_HOST << 'EOF'
+          GITHUB_ACTOR_VAR="$GITHUB_ACTOR"
+          GITHUB_TOKEN_VAR="$GITHUB_TOKEN"
+
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $SSH_USER@$SSH_HOST << EOF
           set -e
 
           cd ~/ephemr
 
           # Se connecter à ghcr.io
-          echo "$GITHUB_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          echo "$GITHUB_TOKEN_VAR" | docker login ghcr.io -u "$GITHUB_ACTOR_VAR" --password-stdin
 
           # Télécharger les nouvelles images
           docker compose pull
