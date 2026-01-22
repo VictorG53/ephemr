@@ -84,17 +84,19 @@ jobs:
           mkdir -p ~/.ssh
           echo "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
+
+          GITHUB_ACTOR_LOWER=$(echo "$GITHUB_ACTOR" | tr '[:upper:]' '[:lower:]')
+
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $SSH_USER@$SSH_HOST << EOF
           set -e
 
           # Variables
-          APP_DIR="/home/$SSH_USER/ephemr"
+          APP_DIR="~/ephemr"
           REGISTRY="ghcr.io"
-          GITHUB_ACTOR_LOWER=$(echo "${GITHUB_ACTOR}" | tr '[:upper:]' '[:lower:]')
-          REPO="${GITHUB_ACTOR_LOWER}/ephemr"
-          WEBAPP_IMAGE="$REGISTRY/$REPO/webapp:latest"
-          WEBSOCKET_IMAGE="$REGISTRY/$REPO/websocket:latest"
-          DOMAIN_NAME="${DOMAIN_NAME}"
+          REPO="$GITHUB_ACTOR_LOWER/ephemr"
+          WEBAPP_IMAGE="\$REGISTRY/\$REPO/webapp:latest"
+          WEBSOCKET_IMAGE="\$REGISTRY/\$REPO/websocket:latest"
+          DOMAIN_NAME="$DOMAIN_NAME"
 
           # Créer le répertoire de l'app s'il n'existe pas
           mkdir -p $APP_DIR
