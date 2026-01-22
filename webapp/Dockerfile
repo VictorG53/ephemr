@@ -1,6 +1,8 @@
 # Stage 1: Build
 FROM node:24-alpine AS builder
 
+ARG VITE_WS_URL
+
 WORKDIR /app
 
 # Copier les fichiers de package
@@ -12,8 +14,8 @@ RUN npm ci
 # Copier le code source
 COPY . .
 
-# Builder la webapp
-RUN npm run build
+# Builder la webapp avec VITE_WS_URL
+RUN VITE_WS_URL=$VITE_WS_URL npm run build
 
 # Stage 2: Production
 FROM nginx:alpine
