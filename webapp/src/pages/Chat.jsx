@@ -48,7 +48,6 @@ export default function Chat() {
         const ws = new WebSocket(wsUrl)
 
         ws.onopen = () => {
-          console.log('Connecté au serveur')
           // Envoyer le message de join avec le username
           const joinMessage = JSON.stringify({
             type: 'join',
@@ -60,12 +59,10 @@ export default function Chat() {
         ws.onmessage = async (event) => {
           try {
             const data = JSON.parse(event.data)
-            console.log('Message reçu:', data)
 
             // Vérifier si c'est une réponse de join
             if (data.type === 'join') {
               if (data.success) {
-                console.log('Join accepté')
                 setConnected(true)
               } else {
                 console.error('Join rejeté:', data.message)
@@ -78,7 +75,6 @@ export default function Chat() {
 
             // Vérifier si c'est un message de statut
             if (data.type === 'status') {
-              console.log('Mise à jour du nombre d\'utilisateurs:', data.userCount)
               setUserCount(data.userCount)
               return
             }
@@ -102,7 +98,6 @@ export default function Chat() {
         }
 
         ws.onclose = () => {
-          console.log('Déconnecté du serveur')
           setConnected(false)
         }
 
