@@ -1,25 +1,14 @@
 require('dotenv').config()
 
-const express = require('express')
 const http = require('http')
 const WebSocket = require('ws')
-const cors = require('cors')
-const path = require('path')
 
-const app = express()
-const server = http.createServer(app)
-
-// CORS configuration
-app.use(cors())
+const server = http.createServer()
 
 // Store channels : { channelId: Set<WebSocket> }
 const channels = new Map()
 // Store usernames by channel : { channelId: Map<WebSocket, username> }
 const channelUsernames = new Map()
-
-// Serve static files
-const distPath = path.join(__dirname, '../webapp/dist')
-app.use(express.static(distPath))
 
 // Create WebSocket Server without auto-handling
 const wss = new WebSocket.Server({ noServer: true })
@@ -36,7 +25,7 @@ const normalizeChannelId = (id) => {
 // Upgrade HTTP to WebSocket
 server.on('upgrade', (request, socket, head) => {
   const pathname = request.url
-  const match = pathname.match(/^\/chat\/([a-zA-Z0-9\-]+)$/)
+  const match = pathname.match(/^\/ws\/([a-zA-Z0-9\-]+)$/)
 
   if (!match) {
     socket.destroy()
@@ -167,11 +156,6 @@ server.on('upgrade', (request, socket, head) => {
       console.error(`WebSocket error for ${channelId}:`, error)
     })
   })
-})
-
-// SPA Fallback - serve index.html for all routes
-app.use((req, res) => {
-  res.sendFile(path.join(distPath, 'index.html'))
 })
 
 // Start server
