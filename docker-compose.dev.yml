@@ -32,7 +32,7 @@ services:
     depends_on:
       - websocket
     environment:
-      - VITE_WS_URL=ws://localhost:8080
+      - VITE_WS_URL=ws://localhost:8080/ws
       - HOST=0.0.0.0
     volumes:
       - ./webapp:/app
