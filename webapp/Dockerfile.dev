@@ -14,5 +14,5 @@ COPY . .
 # Expose le port
 EXPOSE 5173
 
-# Builder la webapp
-RUN npm run build
+# Démarrer le dev server
+CMD ["npm", "run", "dev"]

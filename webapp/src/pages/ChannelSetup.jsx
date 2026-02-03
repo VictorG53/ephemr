@@ -63,7 +63,7 @@ export default function ChannelSetup() {
           </div>
         )}
 
-        <div className="space-y-3">
+        <div className="space-y-3 mx-5">
           <input
             type="text"
             placeholder="Username"
